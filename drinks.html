@@ -8,13 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260802">
 </head>
 <body>
 
 <nav class="nav">
   <a class="brand" href="index.html"><span class="wordmark">DEMI</span><span class="place">Palo Alto</span></a>
-  <ul>
+  <button class="burger" type="button" aria-label="Open menu"
+          aria-expanded="false" aria-controls="nav-links">
+    <span class="bars" aria-hidden="true"></span>
+  </button>
+  <ul id="nav-links">
     <li><a href="index.html">Home</a></li>
     <li><a href="index.html#about">About</a></li>
     <li><a href="breakfast.html">Breakfast</a></li>
@@ -22,6 +26,11 @@
     <li><a href="dinner.html">Dinner</a></li>
     <li><a class="active" href="drinks.html">Drinks</a></li>
     <li><a href="index.html#visit">Visit</a></li>
+    <li class="nav-note">
+      <span>407 Lytton Avenue, Palo Alto</span>
+      <span>Tue&ndash;Sun &middot; 11:30&ndash;2:30 &amp; 5:30&ndash;9:00</span>
+      <a class="btn dark" href="https://maps.google.com/?q=DEMI+407+Lytton+Ave+Palo+Alto" target="_blank" rel="noopener">Get Directions</a>
+    </li>
   </ul>
 </nav>
 
@@ -115,5 +124,6 @@
   </div>
 </footer>
 
+<script src="site.js?v=20260802" defer></script>
 </body>
 </html>

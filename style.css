@@ -21,7 +21,7 @@
   --leaf:#5a7d4a;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* offset anchor jumps so the sticky nav doesn't cover the section top */
 #about,#visit{scroll-margin-top:96px}
 body{
@@ -33,6 +33,11 @@ body{
 }
 img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+/* touch devices keep :hover styles stuck after a tap — opt out of the lifts */
+@media (hover:none){
+  .card:hover,.menu-card:hover{transform:none;box-shadow:none}
+}
 
 /* ---------- type helpers ---------- */
 .display{font-family:'Cormorant Garamond',serif;font-weight:500}
@@ -55,7 +60,10 @@ a{color:inherit;text-decoration:none}
   background:var(--paper);border-bottom:1px solid var(--gold);
   display:flex;align-items:center;justify-content:space-between;
   gap:18px;flex-wrap:wrap;padding:16px 40px;
+  transition:box-shadow .25s ease;
 }
+/* lifts off the page once you start scrolling */
+.nav.scrolled{box-shadow:0 6px 22px rgba(45,30,10,.10)}
 .nav .brand{display:flex;flex-direction:column;line-height:1}
 .nav .brand .wordmark{
   font-family:'Jost',sans-serif;font-weight:500;
@@ -73,6 +81,28 @@ a{color:inherit;text-decoration:none}
 }
 .nav ul a:hover{color:var(--red)}
 .nav ul a.active{border-bottom-color:var(--gold);color:var(--red)}
+/* the address block at the foot of the mobile panel — desktop never sees it */
+.nav .nav-note{display:none}
+
+/* ---------- hamburger (mobile only; shown in the ≤1024 block) ---------- */
+.burger{
+  display:none;width:46px;height:46px;margin-right:-11px;flex:0 0 auto;
+  align-items:center;justify-content:center;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
+}
+.burger .bars{position:relative;display:block;width:22px;height:1.6px;
+  background:currentColor;transition:background-color .1s linear .12s}
+.burger .bars::before,.burger .bars::after{
+  content:'';position:absolute;left:0;width:22px;height:1.6px;background:currentColor;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+.burger .bars::before{top:-6.5px}
+.burger .bars::after{top:6.5px}
+.nav.open .burger{color:var(--red)}
+.nav.open .burger .bars{background:transparent;transition:background-color .1s linear}
+.nav.open .burger .bars::before{transform:translateY(6.5px) rotate(45deg)}
+.nav.open .burger .bars::after{transform:translateY(-6.5px) rotate(-45deg)}
 
 /* ---------- hero ---------- */
 .hero{
@@ -233,14 +263,152 @@ footer a:hover{color:var(--paper)}
 .center-head::before,.center-head::after{content:'';flex:1;border-top:1px solid var(--gold)}
 .leaf-ic{display:inline-block;width:12px;height:12px;vertical-align:-1px;fill:var(--leaf)}
 
-@media (max-width:900px){
-  .card-grid,.menu-cards{grid-template-columns:1fr 1fr}
-  .about-grid,.visit-grid{grid-template-columns:1fr}
-  .foot-grid{grid-template-columns:1fr}
-  .m-cols,.m-cols.three{grid-template-columns:1fr}
-  .nav{padding:14px 18px}
-  .sheet{padding:34px 22px}
+/* ============================================================
+   RESPONSIVE
+   Breakpoints: 1180 narrow desktop · 1024 tablet + mobile header
+                · 820 stack · 620 phone · 400 small phone
+   ============================================================ */
+
+@media (max-width:1180px){
+  .section{padding:82px 22px}
+  .about-grid,.visit-grid{gap:44px}
+  .sheet{padding:46px 40px 34px}
+  .m-cols{column-gap:44px}
+  .m-cols.three{column-gap:32px}
 }
-@media (max-width:560px){
-  .card-grid,.menu-cards{grid-template-columns:1fr}
+
+/* ---------- ≤1024: the desktop nav no longer fits — go to the bar ---------- */
+@media (max-width:1024px){
+  .nav{
+    flex-wrap:nowrap;gap:12px;padding:0 18px;min-height:64px;
+  }
+  .nav .brand .wordmark{font-size:21px;letter-spacing:.34em}
+  .nav .brand .place{font-size:9px;letter-spacing:.34em;margin-top:4px}
+  .burger{display:flex}
+
+  /* the desktop link row becomes a drop-down panel under the bar */
+  .nav ul{
+    position:absolute;top:100%;left:0;right:0;
+    flex-direction:column;gap:0;align-items:stretch;
+    background:var(--paper);
+    border-bottom:1px solid var(--gold);
+    box-shadow:0 20px 34px rgba(45,30,10,.16);
+    padding:4px 0 0;
+    max-height:calc(100vh - 64px);max-height:calc(100dvh - 64px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    opacity:0;visibility:hidden;transform:translateY(-12px);
+    transition:opacity .2s ease,transform .26s cubic-bezier(.4,0,.2,1),
+               visibility 0s linear .26s;
+  }
+  .nav.open ul{
+    opacity:1;visibility:visible;transform:none;
+    transition:opacity .2s ease,transform .26s cubic-bezier(.4,0,.2,1),
+               visibility 0s;
+  }
+  /* soft scrim over the page while the panel is open (click-through, so the
+     document handler still sees an outside tap and closes the menu) */
+  .nav::after{
+    content:'';position:fixed;inset:64px 0 0;z-index:-1;pointer-events:none;
+    background:rgba(28,18,10,.42);
+    opacity:0;visibility:hidden;
+    transition:opacity .26s ease,visibility 0s linear .26s;
+  }
+  .nav.open::after{
+    opacity:1;visibility:visible;
+    transition:opacity .26s ease,visibility 0s;
+  }
+  .nav ul li{width:100%}
+  .nav ul a{
+    display:block;padding:15px 22px;font-size:13px;letter-spacing:.2em;
+    border-bottom:1px solid rgba(194,161,101,.26);
+  }
+  .nav ul li:last-of-type a{border-bottom:0}
+  .nav ul a.active{
+    color:var(--red);background:rgba(194,161,101,.12);
+    border-bottom-color:rgba(194,161,101,.26);
+    box-shadow:inset 3px 0 0 var(--gold);
+  }
+  /* address + hours card that closes out the panel */
+  .nav .nav-note{
+    display:block;background:var(--paper-alt);
+    border-top:1px solid rgba(194,161,101,.4);
+    padding:18px 22px 22px;text-align:left;
+  }
+  .nav .nav-note span{
+    display:block;font-size:14.5px;color:var(--ink-soft);line-height:1.6;
+  }
+  .nav .nav-note span:first-child{color:var(--ink)}
+  .nav .nav-note .btn{margin-top:14px;padding:11px 22px;font-size:12px;width:100%;text-align:center}
+}
+
+/* ---------- ≤820: two-up grids and stacked halves ---------- */
+@media (max-width:820px){
+  .card-grid,.menu-cards{grid-template-columns:1fr 1fr}
+  .about-grid,.visit-grid{grid-template-columns:1fr;gap:34px}
+  .foot-grid{grid-template-columns:1fr;gap:30px;padding-bottom:32px}
+  .m-cols,.m-cols.three{grid-template-columns:1fr}
+  .sheet{padding:34px 24px 28px}
+  .about-grid .photo img{aspect-ratio:16/11}
+}
+
+/* ---------- ≤620: phones ---------- */
+@media (max-width:620px){
+  #about,#visit{scroll-margin-top:72px}
+
+  .section{padding:58px 18px}
+  .section-head{margin-bottom:34px}
+  .section-head p.lede{font-size:16.5px}
+  .kicker-row{gap:14px}
+  .gold-rule{margin:18px auto}
+
+  .hero{min-height:84vh;min-height:84svh}
+  .hero-inner{padding:44px 18px}
+  .hero .place{font-size:12.5px;letter-spacing:.42em;text-indent:.42em}
+  .hero .cta-row{flex-direction:column;align-items:center;gap:12px;margin-top:28px}
+  .hero .cta-row .btn{width:min(100%,300px);text-align:center}
+
+  .card-grid,.menu-cards{grid-template-columns:1fr;gap:18px}
+  .card img{aspect-ratio:16/10}
+  .card .card-body{padding:20px 20px 24px}
+  .menu-card{padding:28px 20px 26px}
+
+  .about-copy p{font-size:16px}
+  .about-grid .photo{padding:7px}
+
+  /* day / hours stack instead of squeezing onto one line */
+  .hours-row{flex-direction:column;align-items:flex-start;gap:1px;padding:10px 2px}
+  .hours-row span:last-child{color:var(--gold-soft);font-size:15px}
+  .visit-block .addr{font-size:23px}
+
+  footer{padding:48px 18px 26px}
+  footer li{margin-bottom:2px}
+  footer li a{display:inline-block;padding:6px 0}
+  .foot-bottom{flex-direction:column;gap:8px;font-size:11px;padding-top:18px}
+
+  /* menu pages */
+  .menu-hero{padding:70px 18px 46px}
+  .menu-hero h1{letter-spacing:.2em;text-indent:.2em}
+  .menu-hero .when{font-size:15.5px}
+  .sheet-wrap{padding:28px 12px 44px}
+  .sheet{padding:26px 17px 22px}
+  .sheet .banner-wrap{margin-bottom:22px}
+  .m-sec{margin-bottom:30px}
+  .m-sec-h{font-size:15.5px;letter-spacing:.15em;text-indent:.15em}
+  .center-head{gap:12px;margin:4px 0 16px}
+  .mrow .n{font-size:15px}
+  .mrow .p{font-size:14.5px}
+  .mdesc{font-size:13px;margin:0 0 11px}
+}
+
+/* ---------- ≤400: small phones (iPhone SE, split windows) ---------- */
+@media (max-width:400px){
+  .nav{padding:0 14px}
+  .kicker{font-size:11px;letter-spacing:.2em;text-indent:.2em;padding:6px 14px 7px}
+  .hero .wordmark{letter-spacing:.32em;text-indent:.32em}
+  .btn{padding:12px 22px;font-size:12.5px;letter-spacing:.18em;text-indent:.18em}
+  .section{padding:50px 15px}
+  .sheet{padding:22px 14px 18px}
+  .mrow .n{font-size:14.5px}
+  .m-sec-h{font-size:14.5px}
+  .visit-block .addr{font-size:21px}
 }
