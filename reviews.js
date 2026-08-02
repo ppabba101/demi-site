@@ -27,14 +27,10 @@
     return '★★★★★'.slice(0, value) + '☆☆☆☆☆'.slice(value);
   }
 
-  function setStatus(mount, message, href) {
+  function setStatus(mount, message) {
     mount.replaceChildren();
     mount.setAttribute('data-state', 'empty');
-    var status = make('p', 'demi-review-status');
-    status.appendChild(document.createTextNode(message + ' '));
-    if (href) status.appendChild(externalLink(
-      make('a', '', 'View DEMI on Google Maps'), href));
-    mount.appendChild(status);
+    mount.appendChild(make('p', 'demi-review-status', message));
   }
 
   function renderAttributions(place, target) {
@@ -43,16 +39,25 @@
     var wrap = make('span', 'demi-review-attributions');
     attributions.forEach(function (attribution, index) {
       if (index) wrap.appendChild(document.createTextNode(', '));
+      if (typeof attribution === 'string') {
+        wrap.appendChild(document.createTextNode(attribution));
+        return;
+      }
       var label = attribution.provider || 'Data provider';
       wrap.appendChild(attribution.providerURI
         ? externalLink(make('a', '', label), attribution.providerURI)
         : document.createTextNode(label));
     });
+    target.appendChild(document.createTextNode(' · '));
     target.appendChild(wrap);
   }
 
-  function reviewCard(review, reviewListUrl) {
+  function reviewCard(review, index, total) {
     var card = make('article', 'demi-review-card');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label',
+      'Guest review ' + (index + 1) + ' of ' + total);
+
     var rating = Number(review.rating) || 0;
     var starRow = make('div', 'demi-review-stars', stars(rating));
     starRow.setAttribute('aria-label', rating + ' out of 5 stars');
@@ -61,32 +66,63 @@
 
     var author = review.authorAttribution || {};
     var authorRow = make('div', 'demi-review-author');
-    if (author.photoURI) {
-      var photo = make('img', 'demi-review-avatar');
-      photo.src = author.photoURI;
-      photo.alt = '';
-      photo.loading = 'lazy';
-      photo.referrerPolicy = 'no-referrer';
-      authorRow.appendChild(photo);
-    } else {
-      authorRow.appendChild(make('span', 'demi-review-avatar-fallback',
-        (author.displayName || 'G').trim().charAt(0).toUpperCase()));
-    }
-
-    var authorCopy = make('div', 'demi-review-author-copy');
-    var authorName = make(author.uri ? 'a' : 'span',
-      'demi-review-author-name', author.displayName || 'Google reviewer');
-    if (author.uri) externalLink(authorName, author.uri);
-    authorCopy.appendChild(authorName);
+    authorRow.appendChild(make('span', 'demi-review-author-name',
+      author.displayName || 'Google reviewer'));
     if (review.relativePublishTimeDescription) {
-      authorCopy.appendChild(make('span', 'demi-review-time',
+      authorRow.appendChild(make('span', 'demi-review-time',
         review.relativePublishTimeDescription));
     }
-    authorRow.appendChild(authorCopy);
     card.appendChild(authorRow);
-    card.appendChild(externalLink(make('a', 'demi-review-source',
-      'Read on Google Maps ↗'), review.googleMapsURI || reviewListUrl));
     return card;
+  }
+
+  function initialiseCarousel(carousel, cards, track, dots, live) {
+    var index = 0;
+    var touchStartX = null;
+
+    function show(nextIndex, announce) {
+      index = (nextIndex + cards.length) % cards.length;
+      carousel.setAttribute('data-carousel-index', String(index));
+      track.style.transform = 'translate3d(-' + (index * 100) + '%,0,0)';
+      cards.forEach(function (card, cardIndex) {
+        card.setAttribute('aria-hidden', cardIndex === index ? 'false' : 'true');
+      });
+      dots.forEach(function (dot, dotIndex) {
+        dot.setAttribute('aria-current', dotIndex === index ? 'true' : 'false');
+      });
+      if (announce) live.textContent =
+        'Showing review ' + (index + 1) + ' of ' + cards.length;
+    }
+
+    carousel.querySelector('.demi-review-prev').addEventListener('click', function () {
+      show(index - 1, true);
+    });
+    carousel.querySelector('.demi-review-next').addEventListener('click', function () {
+      show(index + 1, true);
+    });
+    dots.forEach(function (dot, dotIndex) {
+      dot.addEventListener('click', function () { show(dotIndex, true); });
+    });
+    carousel.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        show(index - 1, true);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        show(index + 1, true);
+      }
+    });
+    carousel.addEventListener('touchstart', function (event) {
+      touchStartX = event.changedTouches[0].clientX;
+    }, { passive: true });
+    carousel.addEventListener('touchend', function (event) {
+      if (touchStartX === null) return;
+      var distance = event.changedTouches[0].clientX - touchStartX;
+      touchStartX = null;
+      if (Math.abs(distance) < 45) return;
+      show(index + (distance < 0 ? 1 : -1), true);
+    }, { passive: true });
+    show(0, false);
   }
 
   function render(mount, place) {
@@ -96,56 +132,72 @@
       return review && (review.text || '').trim() &&
         Number(review.rating || 0) >= minRating;
     }).slice(0, limit);
-    var links = place.googleMapsLinks || {};
-    var reviewListUrl = links.reviewsURI || place.googleMapsURI ||
-      config.fallbackUrl;
 
     if (!reviews.length) {
-      setStatus(mount, 'No matching guest reviews are available yet.',
-        reviewListUrl);
+      setStatus(mount, 'No matching guest reviews are available yet.');
       return;
     }
 
     mount.replaceChildren();
     mount.setAttribute('data-state', 'ready');
-    var summary = make('div', 'demi-review-summary');
-    if (place.rating) {
-      summary.appendChild(make('span', 'demi-review-score',
-        Number(place.rating).toFixed(1)));
-      var summaryCopy = make('span', 'demi-review-summary-copy');
-      var summaryStars = make('span', 'demi-review-stars', stars(place.rating));
-      summaryStars.setAttribute('aria-label', place.rating + ' out of 5 stars');
-      summaryCopy.appendChild(summaryStars);
-      if (place.userRatingCount) {
-        summaryCopy.appendChild(make('span', '',
-          String(place.userRatingCount) + ' Google reviews'));
-      }
-      summary.appendChild(summaryCopy);
-    }
-    if (reviewListUrl) {
-      var googleAttribution = externalLink(
-        make('a', 'demi-google-attribution', 'Google Maps'), reviewListUrl);
-      googleAttribution.setAttribute('translate', 'no');
-      googleAttribution.setAttribute('aria-label',
-        'Google Maps attribution and DEMI reviews');
-      summary.appendChild(googleAttribution);
-    }
-    mount.appendChild(summary);
 
-    var grid = make('div', 'demi-review-grid');
-    reviews.forEach(function (review) {
-      grid.appendChild(reviewCard(review, reviewListUrl));
+    var attribution = make('div', 'demi-review-attribution-row');
+    var googleAttribution = make('span', 'demi-google-attribution', 'Google Maps');
+    googleAttribution.setAttribute('translate', 'no');
+    googleAttribution.setAttribute('aria-label', 'Google Maps attribution');
+    attribution.appendChild(googleAttribution);
+    renderAttributions(place, attribution);
+    mount.appendChild(attribution);
+
+    var carousel = make('div', 'demi-review-carousel');
+    carousel.setAttribute('role', 'region');
+    carousel.setAttribute('aria-roledescription', 'carousel');
+    carousel.setAttribute('aria-label', 'Guest reviews');
+    carousel.tabIndex = 0;
+
+    var viewport = make('div', 'demi-review-viewport');
+    var track = make('div', 'demi-review-track');
+    var cards = reviews.map(function (review, index) {
+      var card = reviewCard(review, index, reviews.length);
+      track.appendChild(card);
+      return card;
     });
-    mount.appendChild(grid);
+    viewport.appendChild(track);
+    carousel.appendChild(viewport);
 
-    var disclosure = make('p', 'demi-review-disclosure');
-    disclosure.appendChild(document.createTextNode(
-      'Google reviews are shown in Google’s relevance order. Only reviews ' +
-      'rated ' + minRating + ' stars or higher and containing text are displayed. '));
-    disclosure.appendChild(externalLink(make('a', '', 'Google review policies'),
-      'https://support.google.com/contributionpolicy/answer/7400114'));
-    renderAttributions(place, disclosure);
-    mount.appendChild(disclosure);
+    if (cards.length > 1) {
+      var controls = make('div', 'demi-review-controls');
+      var prev = make('button', 'demi-review-arrow demi-review-prev', '‹');
+      prev.type = 'button';
+      prev.setAttribute('aria-label', 'Previous review');
+      controls.appendChild(prev);
+
+      var dotWrap = make('div', 'demi-review-dots');
+      var dots = cards.map(function (_card, index) {
+        var dot = make('button', 'demi-review-dot');
+        dot.type = 'button';
+        dot.setAttribute('aria-label', 'Show review ' + (index + 1));
+        dotWrap.appendChild(dot);
+        return dot;
+      });
+      controls.appendChild(dotWrap);
+
+      var next = make('button', 'demi-review-arrow demi-review-next', '›');
+      next.type = 'button';
+      next.setAttribute('aria-label', 'Next review');
+      controls.appendChild(next);
+      carousel.appendChild(controls);
+
+      var live = make('span', 'demi-review-live');
+      live.setAttribute('aria-live', 'polite');
+      live.setAttribute('aria-atomic', 'true');
+      carousel.appendChild(live);
+      initialiseCarousel(carousel, cards, track, dots, live);
+    } else {
+      cards[0].setAttribute('aria-hidden', 'false');
+    }
+
+    mount.appendChild(carousel);
   }
 
   async function load() {
@@ -157,15 +209,11 @@
       }
       var library = await google.maps.importLibrary('places');
       var place = new library.Place({ id: config.placeId });
-      await place.fetchFields({
-        fields: ['displayName', 'rating', 'userRatingCount', 'reviews',
-          'googleMapsURI', 'googleMapsLinks']
-      });
+      await place.fetchFields({ fields: ['reviews'] });
       [].forEach.call(mounts, function (mount) { render(mount, place); });
     } catch (error) {
       [].forEach.call(mounts, function (mount) {
-        setStatus(mount, 'Guest reviews are temporarily unavailable.',
-          config.fallbackUrl);
+        setStatus(mount, 'Guest reviews are temporarily unavailable.');
       });
       if (window.console && console.warn) {
         console.warn('DEMI Google reviews could not load:', error);
