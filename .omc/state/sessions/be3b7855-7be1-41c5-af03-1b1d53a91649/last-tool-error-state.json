@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /Users/pranavpabba/demi-website/deploy/wp && git -c user.email=noreply@anthropic.com -c user.name=\\\"Claude\\\" pull --rebase -q origin main && git push -q origin main && echo wp-pushed &&...",
-  "error": "Exit code 1\nwp-pushed\ndemiwp.pranavpabba.com---static:",
-  "timestamp": "2026-08-02T07:05:03.270Z",
-  "retry_count": 1
-}
