@@ -188,9 +188,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offse
   justify-content:center;text-align:center;color:var(--ink-soft);font-size:15px;
   font-style:italic}
 .demi-review-status a{color:var(--red);text-decoration:underline}
-.demi-review-attribution-row{margin:0 auto 16px;color:#5e5e5e;
+.demi-review-attribution-row{margin:12px 2px 0;color:#5e5e5e;
   font-family:Roboto,Arial,sans-serif;font-size:12px;font-style:normal;
-  font-weight:400;letter-spacing:normal;line-height:1.25;text-align:center}
+  font-weight:400;letter-spacing:normal;line-height:1.25;text-align:right}
 .demi-google-attribution{white-space:nowrap}
 .demi-review-attributions a{color:inherit;text-decoration:underline}
 .demi-review-carousel{position:relative;width:min(100%,760px);margin:0 auto;outline:none}
@@ -433,7 +433,7 @@ footer a:hover{color:var(--paper)}
   .card .card-body{padding:20px 20px 24px}
   .menu-card{padding:28px 20px 26px}
   .demi-google-reviews{margin-top:26px}
-  .demi-review-attribution-row{margin-bottom:13px}
+  .demi-review-attribution-row{margin-top:10px}
   .demi-review-card{padding:26px 22px 24px}
   .demi-review-text{font-size:15px}
 

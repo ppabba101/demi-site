@@ -147,7 +147,6 @@
     googleAttribution.setAttribute('aria-label', 'Google Maps attribution');
     attribution.appendChild(googleAttribution);
     renderAttributions(place, attribution);
-    mount.appendChild(attribution);
 
     var carousel = make('div', 'demi-review-carousel');
     carousel.setAttribute('role', 'region');
@@ -197,6 +196,7 @@
       cards[0].setAttribute('aria-hidden', 'false');
     }
 
+    carousel.appendChild(attribution);
     mount.appendChild(carousel);
   }
 
