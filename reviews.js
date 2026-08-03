@@ -6,6 +6,62 @@
   if (!mounts.length || !config.configured || !config.placeId) return;
 
   var started = false;
+  var mapsRetry = null;
+
+  function mapsReady() {
+    return !!(window.google && google.maps && google.maps.importLibrary);
+  }
+
+  function pause(milliseconds) {
+    return new Promise(function (resolve) { window.setTimeout(resolve, milliseconds); });
+  }
+
+  async function waitForMaps(timeout) {
+    var deadline = Date.now() + timeout;
+    while (!mapsReady() && Date.now() < deadline) {
+      await pause(100);
+    }
+    if (!mapsReady()) throw new Error('Google Maps JavaScript API unavailable');
+  }
+
+  // A mobile connection can occasionally lose the parser-inserted Maps
+  // request. The page then continues with this script, and the old loader
+  // permanently replaced the reviews with an error on its first check. Give a
+  // bootstrapping response time to settle, then retry the configured URL once.
+  async function ensureMaps() {
+    if (mapsReady()) return;
+    try {
+      await waitForMaps(2500);
+      return;
+    } catch (_error) {
+      // The original request did not produce a usable API; retry once below.
+    }
+
+    if (!mapsRetry) {
+      mapsRetry = new Promise(function (resolve, reject) {
+        var original = [].slice.call(document.scripts).find(function (script) {
+          return script.src.indexOf('maps.googleapis.com/maps/api/js') !== -1;
+        });
+        if (!original) {
+          reject(new Error('Google Maps script element unavailable'));
+          return;
+        }
+
+        var retry = document.createElement('script');
+        retry.src = original.src;
+        retry.async = true;
+        retry.setAttribute('data-demi-maps-retry', '1');
+        retry.onload = resolve;
+        retry.onerror = function () {
+          reject(new Error('Google Maps retry request failed'));
+        };
+        document.head.appendChild(retry);
+      });
+    }
+
+    await mapsRetry;
+    await waitForMaps(6000);
+  }
 
   function make(tag, className, text) {
     var node = document.createElement(tag);
@@ -204,9 +260,7 @@
     if (started) return;
     started = true;
     try {
-      if (!window.google || !google.maps || !google.maps.importLibrary) {
-        throw new Error('Google Maps JavaScript API unavailable');
-      }
+      await ensureMaps();
       var library = await google.maps.importLibrary('places');
       var place = new library.Place({ id: config.placeId });
       await place.fetchFields({ fields: ['reviews'] });
